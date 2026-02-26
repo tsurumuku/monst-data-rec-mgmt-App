@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>モンスト データ復旧フォーム管理</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+        line-height: 1.5;
+        --bg: #f3f5ff;
+        --panel: #ffffff;
+        --primary: #4c5ef7;
+        --primary-dark: #3b4ad1;
+        --danger: #d6336c;
+        --border: #d9def2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: #1f2a44;
+      }
+
+      header {
+        padding: 1.5rem 2rem 1rem;
+      }
+
+      header h1 {
+        margin: 0 0 0.4rem;
+      }
+
+      header p {
+        margin: 0;
+        color: #4d5875;
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 1rem;
+        padding: 1rem 2rem 2rem;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 8px 20px rgba(40, 58, 120, 0.06);
+      }
+
+      h2 {
+        margin-top: 0;
+      }
+
+      .inline-field {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .date-parts {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.35rem;
+      }
+
+      .date-parts input {
+        width: 5.5rem;
+        margin-top: 0;
+      }
+
+      .line-fields {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.35rem;
+      }
+
+      .line-fields input {
+        margin-top: 0;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid #bec7e8;
+        border-radius: 8px;
+        padding: 0.55rem 0.65rem;
+        margin-top: 0.35rem;
+      }
+
+      button {
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        background: var(--primary);
+        color: #fff;
+        padding: 0.6rem 0.9rem;
+        transition: background 0.2s;
+      }
+
+      button:hover {
+        background: var(--primary-dark);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      button.danger {
+        background: var(--danger);
+      }
+
+      .account-list {
+        margin: 1rem 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .account-button {
+        width: 100%;
+        text-align: left;
+        background: #eef1ff;
+        color: #26315d;
+      }
+
+      .account-button.active {
+        background: #dfe4ff;
+        border: 1px solid #c2ccff;
+      }
+
+      .form-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.8rem;
+      }
+
+      .recovery-form {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+      }
+
+
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: 1fr;
+          padding-inline: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>モンスト データ復旧フォーム管理</h1>
+      <p>
+        アカウントごとにデータ復旧フォームの回答を保存・更新できます。
+      </p>
+    </header>
+
+    <main>
+      <aside class="panel account-panel">
+        <h2>アカウント一覧</h2>
+        <form id="new-account-form">
+          <label for="new-account-name">新規アカウント名</label>
+          <div class="inline-field">
+            <input
+              id="new-account-name"
+              name="new-account-name"
+              type="text"
+              placeholder="例: メインアカウント"
+              required
+            />
+            <button type="submit">追加</button>
+          </div>
+        </form>
+        <ul id="account-list" class="account-list"></ul>
+      </aside>
+
+      <section class="panel form-panel">
+        <div class="form-header">
+          <h2 id="selected-account-title">アカウントを選択してください</h2>
+          <button id="delete-account-button" class="danger" type="button" disabled>
+            選択中アカウントを削除
+          </button>
+        </div>
+
+        <form id="recovery-form" class="recovery-form" hidden>
+          <div class="grid">
+            <label>
+              データ復旧を希望するアカウントのID（最大12桁まで）
+              <input
+                name="recoveryAccountId"
+                type="text"
+                inputmode="numeric"
+                maxlength="12"
+                pattern="[0-9]{1,12}"
+                placeholder="数字のみ・最大12桁"
+                required
+              />
+            </label>
+            <label>
+              バックアップ時のMIXI ID
+              <input name="backupMixiId" type="email" placeholder="example@mail.com" required />
+            </label>
+            <label>
+              最後に利用していたニックネーム
+              <input name="lastNickname" type="text" required />
+            </label>
+            <label>
+              最後に利用していたときのランク
+              <input name="lastRank" type="number" min="1" required />
+            </label>
+            <label>
+              最後にログインした日
+              <select name="lastLoginKnown" required>
+                <option value="">選択してください</option>
+                <option value="日付を覚えている">日付を覚えている</option>
+                <option value="不明">不明</option>
+              </select>
+              <div class="date-parts" aria-label="最後にログインした日">
+                <input name="lastLoginYear" type="number" min="2000" max="2100" placeholder="年" required />
+                <span>年</span>
+                <input name="lastLoginMonth" type="number" min="1" max="12" placeholder="月" required />
+                <span>月</span>
+                <input name="lastLoginDay" type="number" min="1" max="31" placeholder="日" required />
+                <span>日</span>
+              </div>
+            </label>
+            <label>
+              引き継ぎ設定の有無
+              <select name="transferSetting" required>
+                <option value="">選択してください</option>
+                <option value="設定済み">設定済み</option>
+                <option value="未設定">未設定</option>
+                <option value="不明">不明</option>
+              </select>
+            </label>
+            <label>
+              主に利用していた端末
+              <input name="device" type="text" placeholder="iPhone 14 など" required />
+            </label>
+            <label>
+              モンスターストライクのご利用を開始された年と月
+              <input name="startedYearMonth" type="month" required />
+            </label>
+            <label>
+              課金履歴
+              <select name="purchaseHistory" required>
+                <option value="">選択してください</option>
+                <option value="あり">あり</option>
+                <option value="なし">なし</option>
+                <option value="不明">不明</option>
+              </select>
+            </label>
+            <label>
+              最後に所持していたオーブの個数
+              <input name="lastOrbs" type="number" min="0" required />
+            </label>
+            <label>
+              フレンドだった方のアカウントIDを3つ
+              <div class="line-fields">
+                <input name="friendAccountId1" type="text" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}" placeholder="1人目（数字のみ・最大12桁）" required />
+                <input name="friendAccountId2" type="text" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}" placeholder="2人目（数字のみ・最大12桁）" required />
+                <input name="friendAccountId3" type="text" inputmode="numeric" maxlength="12" pattern="[0-9]{1,12}" placeholder="3人目（数字のみ・最大12桁）" required />
+              </div>
+            </label>
+          </div>
+
+          <label>
+            プレミアムガチャで手に入れたレア度5以上のモンスター（新しい順に2体）
+            <div class="line-fields">
+              <input name="premiumGachaLatest1" type="text" placeholder="1体目" required />
+              <input name="premiumGachaLatest2" type="text" placeholder="2体目" required />
+            </div>
+          </label>
+
+          <label>
+            よく使用していたレア度5以上のモンスター（多い順に3体）
+            <div class="line-fields">
+              <input name="mostUsedRare5Monster1" type="text" placeholder="1体目" required />
+              <input name="mostUsedRare5Monster2" type="text" placeholder="2体目" required />
+              <input name="mostUsedRare5Monster3" type="text" placeholder="3体目" required />
+            </div>
+          </label>
+
+          <label>
+            所持している運極モンスター5体
+            <div class="line-fields">
+              <input name="luckMaxMonster1" type="text" placeholder="1体目" required />
+              <input name="luckMaxMonster2" type="text" placeholder="2体目" required />
+              <input name="luckMaxMonster3" type="text" placeholder="3体目" required />
+              <input name="luckMaxMonster4" type="text" placeholder="4体目" required />
+              <input name="luckMaxMonster5" type="text" placeholder="5体目" required />
+            </div>
+          </label>
+
+          <label>
+            プレミアムガチャで最初に手に入れたレア度5以上のモンスター
+            <textarea name="firstPremiumGachaRare5Monster" rows="2" required></textarea>
+          </label>
+
+          <label>
+            魂の紋章を装着しているモンスター3体
+            <div class="line-fields">
+              <input name="soulEmblemMonster1" type="text" placeholder="1体目" required />
+              <input name="soulEmblemMonster2" type="text" placeholder="2体目" required />
+              <input name="soulEmblemMonster3" type="text" placeholder="3体目" required />
+            </div>
+          </label>
+
+          <div class="actions">
+            <button type="submit">このアカウントに保存</button>
+            <button type="button" id="export-json">JSONとしてエクスポート</button>
+            <button type="button" id="import-json">JSONをインポート</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <input id="import-json-file" type="file" accept="application/json" hidden />
+
+    <template id="account-item-template">
+      <li>
+        <button type="button" class="account-button"></button>
+      </li>
+    </template>
+
+    <script>
+      const STORAGE_KEY = 'monstRecoveryAccounts';
+
+      /** @type {{id: string, name: string, answers: Record<string, string>}[]} */
+      let accounts = [];
+      let selectedAccountId = null;
+
+      const accountList = document.getElementById('account-list');
+      const accountTemplate = document.getElementById('account-item-template');
+      const newAccountForm = document.getElementById('new-account-form');
+      const selectedAccountTitle = document.getElementById('selected-account-title');
+      const recoveryForm = document.getElementById('recovery-form');
+      const deleteAccountButton = document.getElementById('delete-account-button');
+      const exportJsonButton = document.getElementById('export-json');
+      const importJsonButton = document.getElementById('import-json');
+      const importJsonFileInput = document.getElementById('import-json-file');
+      const lastLoginKnownSelect = document.querySelector('[name="lastLoginKnown"]');
+      const lastLoginYearInput = document.querySelector('[name="lastLoginYear"]');
+      const lastLoginMonthInput = document.querySelector('[name="lastLoginMonth"]');
+      const lastLoginDayInput = document.querySelector('[name="lastLoginDay"]');
+
+      function syncLastLoginDateInput() {
+        if (!lastLoginKnownSelect) return;
+        const dateInputs = [lastLoginYearInput, lastLoginMonthInput, lastLoginDayInput].filter(Boolean);
+        const isUnknown = lastLoginKnownSelect.value === '不明';
+
+        dateInputs.forEach((input) => {
+          input.disabled = isUnknown;
+          input.required = !isUnknown;
+          if (isUnknown) {
+            input.value = '';
+          }
+        });
+      }
+
+      function createImportedAccount(raw) {
+        const now = Date.now().toString(36);
+        const random = Math.random().toString(36).slice(2, 8);
+        const safeName = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'インポートしたアカウント';
+        const safeAnswers = raw && typeof raw.answers === 'object' && raw.answers !== null ? raw.answers : {};
+        const normalizedAnswers = Object.fromEntries(
+          Object.entries(safeAnswers).map(([key, value]) => [key, String(value ?? '')])
+        );
+
+        return {
+          id: `${now}-${random}`,
+          name: safeName,
+          answers: normalizedAnswers,
+        };
+      }
+
+      function enforceNumericInput(event) {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        target.value = target.value.replace(/\D+/g, '').slice(0, 12);
+      }
+
+      const numeric12InputNames = ['recoveryAccountId', 'friendAccountId1', 'friendAccountId2', 'friendAccountId3'];
+      numeric12InputNames.forEach((name) => {
+        const input = document.querySelector(`[name="${name}"]`);
+        if (input) {
+          input.addEventListener('input', enforceNumericInput);
+        }
+      });
+
+      function validateNoDuplicates(fieldNames, groupLabel) {
+        const seen = new Map();
+
+        for (const name of fieldNames) {
+          const input = document.querySelector(`[name="${name}"]`);
+          if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) {
+            continue;
+          }
+
+          input.setCustomValidity('');
+          const value = input.value.trim();
+          if (!value) continue;
+
+          if (seen.has(value)) {
+            const message = `${groupLabel}で同じ内容は入力できません。`;
+            input.setCustomValidity(message);
+            const first = seen.get(value);
+            first.setCustomValidity(message);
+            input.reportValidity();
+            return false;
+          }
+
+          seen.set(value, input);
+        }
+
+        return true;
+      }
+
+      const duplicateGroups = [
+        { label: 'フレンドだった方のアカウントID', fields: ['friendAccountId1', 'friendAccountId2', 'friendAccountId3'] },
+        { label: 'プレミアムガチャで手に入れたレア度5以上のモンスター', fields: ['premiumGachaLatest1', 'premiumGachaLatest2'] },
+        { label: 'よく使用していたレア度5以上のモンスター', fields: ['mostUsedRare5Monster1', 'mostUsedRare5Monster2', 'mostUsedRare5Monster3'] },
+        { label: '所持している運極モンスター', fields: ['luckMaxMonster1', 'luckMaxMonster2', 'luckMaxMonster3', 'luckMaxMonster4', 'luckMaxMonster5'] },
+        { label: '魂の紋章を装着しているモンスター', fields: ['soulEmblemMonster1', 'soulEmblemMonster2', 'soulEmblemMonster3'] },
+      ];
+
+      function clearDuplicateValidationMessages() {
+        duplicateGroups.forEach((group) => {
+          group.fields.forEach((name) => {
+            const input = document.querySelector(`[name="${name}"]`);
+            if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+              input.setCustomValidity('');
+            }
+          });
+        });
+      }
+
+      function validateDuplicateGroups() {
+        clearDuplicateValidationMessages();
+        return duplicateGroups.every((group) => validateNoDuplicates(group.fields, group.label));
+      }
+
+      duplicateGroups.forEach((group) => {
+        group.fields.forEach((name) => {
+          const input = document.querySelector(`[name="${name}"]`);
+          if (input) {
+            input.addEventListener('input', clearDuplicateValidationMessages);
+          }
+        });
+      });
+
+      function loadAccounts() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          accounts = [];
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            accounts = parsed;
+          }
+        } catch {
+          accounts = [];
+        }
+      }
+
+      function saveAccounts() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+      }
+
+      function renderAccounts() {
+        accountList.innerHTML = '';
+
+        accounts.forEach((account) => {
+          const item = accountTemplate.content.firstElementChild.cloneNode(true);
+          const button = item.querySelector('.account-button');
+          button.textContent = account.name;
+          button.classList.toggle('active', account.id === selectedAccountId);
+          button.addEventListener('click', () => selectAccount(account.id));
+          accountList.appendChild(item);
+        });
+      }
+
+      function selectAccount(accountId) {
+        selectedAccountId = accountId;
+        const account = accounts.find((item) => item.id === accountId);
+
+        if (!account) {
+          recoveryForm.hidden = true;
+          selectedAccountTitle.textContent = 'アカウントを選択してください';
+          deleteAccountButton.disabled = true;
+          syncLastLoginDateInput();
+          renderAccounts();
+          return;
+        }
+
+        selectedAccountTitle.textContent = `回答編集中: ${account.name}`;
+        deleteAccountButton.disabled = false;
+        recoveryForm.hidden = false;
+
+        Array.from(recoveryForm.elements).forEach((element) => {
+          if (!element.name) return;
+          element.value = account.answers[element.name] ?? '';
+        });
+
+        syncLastLoginDateInput();
+        renderAccounts();
+      }
+
+      function createAccount(name) {
+        const now = Date.now().toString(36);
+        const random = Math.random().toString(36).slice(2, 8);
+        return {
+          id: `${now}-${random}`,
+          name,
+          answers: {},
+        };
+      }
+
+      newAccountForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const formData = new FormData(newAccountForm);
+        const name = (formData.get('new-account-name') || '').toString().trim();
+        if (!name) return;
+
+        const account = createAccount(name);
+        accounts.push(account);
+        saveAccounts();
+        newAccountForm.reset();
+        selectAccount(account.id);
+      });
+
+      recoveryForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        clearDuplicateValidationMessages();
+        if (!recoveryForm.reportValidity()) return;
+        if (!validateDuplicateGroups()) return;
+        const account = accounts.find((item) => item.id === selectedAccountId);
+        if (!account) return;
+
+        const formData = new FormData(recoveryForm);
+        account.answers = Object.fromEntries(
+          Array.from(formData.entries()).map(([key, value]) => [key, value.toString()])
+        );
+
+        saveAccounts();
+        alert(`「${account.name}」の回答を保存しました。`);
+      });
+
+      deleteAccountButton.addEventListener('click', () => {
+        if (!selectedAccountId) return;
+        const account = accounts.find((item) => item.id === selectedAccountId);
+        if (!account) return;
+
+        const shouldDelete = confirm(`「${account.name}」を削除します。よろしいですか？`);
+        if (!shouldDelete) return;
+
+        accounts = accounts.filter((item) => item.id !== selectedAccountId);
+        selectedAccountId = null;
+        saveAccounts();
+        selectAccount(null);
+      });
+
+
+      importJsonButton.addEventListener('click', () => {
+        importJsonFileInput.click();
+      });
+
+      importJsonFileInput.addEventListener('change', async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          const importedAccount = createImportedAccount(parsed);
+          accounts.push(importedAccount);
+          saveAccounts();
+          selectAccount(importedAccount.id);
+          alert(`「${importedAccount.name}」をインポートしました。`);
+        } catch {
+          alert('JSONの読み込みに失敗しました。ファイル内容を確認してください。');
+        } finally {
+          importJsonFileInput.value = '';
+        }
+      });
+
+      exportJsonButton.addEventListener('click', () => {
+        const account = accounts.find((item) => item.id === selectedAccountId);
+        if (!account) return;
+
+        const blob = new Blob([JSON.stringify(account, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${account.name}-recovery.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+
+      if (lastLoginKnownSelect) {
+        lastLoginKnownSelect.addEventListener('change', syncLastLoginDateInput);
+      }
+
+      loadAccounts();
+      renderAccounts();
+      selectAccount(accounts[0]?.id ?? null);
+      syncLastLoginDateInput();
+    </script>
+  </body>
+</html>
